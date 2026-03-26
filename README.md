@@ -31,7 +31,13 @@ Este repositorio contiene los ejercicios prácticos del curso de **LangChain con
 2. Crear una API Key
 3. Guardar la key como `GOOGLE_API_KEY`
 
-#### Qdrant (Opcional - solo para ejercicios 04 y 05)
+#### Cohere (Requerido para reranking en el agente)
+
+1. Crear cuenta en [https://dashboard.cohere.com/](https://dashboard.cohere.com/)
+2. Ir a "API Keys" y copiar la key
+3. Guardar la key como `COHERE_API_KEY`
+
+#### Qdrant (Opcional - solo para ejercicios 04, 05 y 06)
 
 1. Crear cuenta en [https://cloud.qdrant.io/](https://cloud.qdrant.io/)
 2. Crear un cluster gratuito
@@ -54,7 +60,10 @@ LANGCHAIN_PROJECT=curso-langchain
 # === Google AI / Gemini (Opcional) ===
 GOOGLE_API_KEY=tu_api_key_de_google
 
-# === Qdrant (Opcional - solo para ejercicios 04 y 05) ===
+# === Cohere (Requerido para reranking) ===
+COHERE_API_KEY=tu_api_key_de_cohere
+
+# === Qdrant (Opcional - solo para ejercicios 04, 05 y 06) ===
 QDRANT_URL=https://tu-cluster.qdrant.io
 QDRANT_API_KEY=tu_api_key_de_qdrant
 ```
@@ -74,6 +83,7 @@ npm install
 | 03  | `npm run 03:homework` | `03_homework_maker.ts`      | **Generador de Tareas** - Agente multi-tool con bucle agentic manual. Usa Wikipedia, Calculator y WordCount para generar tareas escolares adaptadas al nivel del alumno. |
 | 04  | `npm run 04:agent`    | `04_webserver_for_agent.ts` | **Servidor Web con Agente** - Integra un agente ReAct con Fastify y SSE para streaming en tiempo real. Incluye memoria persistente y herramientas RAG.                   |
 | 05  | `npm run 05:indexer`  | `05_mdn-vector-indexer.ts`  | **Indexador de Documentación** - Pipeline de indexación RAG que carga documentación de MDN, la divide en chunks y la almacena en Qdrant.                                 |
+| 06  | `npm run 06:indexer`  | `06_nollan-indexer.ts`      | **Indexador de Guiones de Nolan** - Pipeline de indexación RAG que carga guiones de películas de Christopher Nolan desde IMSDB y los almacena en Qdrant.                 |
 
 ## Estructura del Proyecto
 
@@ -84,6 +94,7 @@ src/
 ├── 03_homework_maker.ts       # Agentic Loop + PromptTemplate + múltiples tools
 ├── 04_webserver_for_agent.ts  # Fastify + SSE + Agent con memoria
 ├── 05_mdn-vector-indexer.ts   # Web scraping + chunking + Qdrant
+├── 06_nollan-indexer.ts       # Indexación de guiones de Nolan + Qdrant
 │
 ├── agents_wrapper/
 │   └── agent.ts               # Wrapper del agente con streaming y contextSchema
@@ -133,10 +144,18 @@ src/
 - **QdrantVectorStore**: Base de datos vectorial para búsqueda semántica
 - **Deduplicación**: Eliminar vectores existentes antes de re-indexar
 
+### 06 - Indexador de Guiones de Nolan
+
+- **CheerioWebBaseLoader**: Web scraping de guiones desde IMSDB
+- **RecursiveCharacterTextSplitter**: División en chunks con overlap
+- **Batch indexing**: Inserción por lotes para respetar límites de la API de embeddings
+- **CohereRerank**: Reranking de resultados (usado en el agente del ejercicio 04)
+
 ## Orden Recomendado
 
 1. **01_comments_classifier** - Conceptos básicos de Structured Output
 2. **02_cyber_poet** - Introducción a Tools
 3. **03_homework_maker** - Agentic Loop manual con múltiples tools
 4. **04_webserver_for_agent** - Agente completo con servidor web y streaming
-5. **05_mdn-vector-indexer** - Indexación de documentación para RAG (opcional, mejora el 04)
+5. **05_mdn-vector-indexer** - Indexación de documentación para RAG (opcional)
+6. **06_nollan-indexer** - Indexación de guiones de Nolan para RAG (necesario para el agente del 04)

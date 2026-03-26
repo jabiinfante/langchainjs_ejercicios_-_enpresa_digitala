@@ -128,7 +128,7 @@ export class Agent {
       ],
       // Middleware: funciones que procesan los mensajes antes/después del LLM
       middleware: [
-        trimMessages, // Limita el historial para no exceder el contexto
+        //trimMessages, // Limita el historial para no exceder el contexto
         // System prompt dinámico: se ejecuta en cada invocación
         // Esto permite incluir información que cambia (fecha, estado, etc.)
         dynamicSystemPromptMiddleware(() => {
@@ -146,11 +146,10 @@ FECHA ACTUAL: ${today}
 HERRAMIENTAS DISPONIBLES Y CUÁNDO USARLAS:
 
 1. **storage_knowledge** - Base de conocimiento sobre almacenamiento web
-   USAR OBLIGATORIAMENTE cuando el usuario pregunte sobre:
-   - localStorage, sessionStorage, IndexedDB, cookies, Cache API
-   - Cómo guardar datos en el navegador
-   - Límites de almacenamiento web
-   - Diferencias entre métodos de persistencia
+   USAR OBLIGATORIAMENTE cuando el usuario pregunte sobre peliculas de Christopher Nolan:
+   - Interstellar
+   - Inception
+    
 
 2. **get_exchange_rates** - Tasas de cambio ACTUALES
    USAR cuando el usuario pregunte sobre:
@@ -167,7 +166,7 @@ HERRAMIENTAS DISPONIBLES Y CUÁNDO USARLAS:
 
 REGLAS:
 - Si no estás seguro de la respuesta, USA las herramientas disponibles
-- Para preguntas sobre storage web, SIEMPRE consulta storage_knowledge primero
+- Para preguntas sobre peliculas de nolan, SIEMPRE consulta storage_knowledge primero
 - Para conversiones de moneda, USA las herramientas de tasas de cambio
 - Sé conciso pero completo en tus respuestas`;
         }),

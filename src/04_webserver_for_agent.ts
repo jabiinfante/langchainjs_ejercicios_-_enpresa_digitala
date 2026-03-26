@@ -66,7 +66,7 @@ const embeddings = new MistralAIEmbeddings({
 
 const vectorStore = await QdrantVectorStore.fromExistingCollection(embeddings, {
   url: process.env.QDRANT_URL,
-  collectionName: "langchainjs-testing-dia2",
+  collectionName: "nolan-scripts",
   apiKey: process.env.QDRANT_API_KEY,
 });
 // ó usar inMemorry vector store para pruebas rápidas
@@ -111,14 +111,15 @@ fastify.get("/", async (request, reply) => {
 // El cliente envía un mensaje y el servidor lo pasa al agente.
 // La respuesta se envía de forma asíncrona vía SSE (no en esta ruta).
 
-fastify.post<{ Params: { uuid?: string }; Body: { message: string } }>(
+fastify.post<{ Querystring: { uuid?: string }; Body: { message: string } }>(
   "/message",
   async (request, reply) => {
     const { message } = request.body;
 
     // thread_id identifica la conversación
     // En producción: obtener de cookies, headers, JWT, etc.
-    const thread_id = request.params.uuid || "chat-id-XXX";
+    
+    const thread_id = request.query.uuid || "chat-id-XXX";
 
     // Enviar mensaje al agente (procesamiento asíncrono)
     // Las respuestas se enviarán vía SSE a los clientes suscritos
@@ -135,10 +136,12 @@ fastify.post<{ Params: { uuid?: string }; Body: { message: string } }>(
 // El cliente mantiene una conexión abierta y recibe mensajes en tiempo real.
 // Documentación SSE: https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events
 
-fastify.get<{ Params: { uuid?: string } }>(
+fastify.get<{ Querystring: { uuid?: string } }>(
   "/stream",
   async (request, reply) => {
-    const thread_id = request.params.uuid || "chat-id-XXX";
+
+
+    const thread_id = request.query.uuid || "chat-id-XXX";
 
     // Enviar evento de conexión establecida
     reply.sse({

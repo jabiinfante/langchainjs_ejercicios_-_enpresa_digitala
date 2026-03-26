@@ -210,12 +210,6 @@ while (iteracion < MAX_ITERACIONES) {
       resultado = `Error: herramienta "${call.name}" no reconocida`;
     }
 
-    // Si hay respuesta parcial del modelo, añadirla al historial
-    if (response.text) {
-      console.log(`   💬 Respuesta parcial: ${response.text.substring(0, 100)}...`);
-      messages.push(new AIMessage({ content: response.text }));
-    }
-
     // Añadir el resultado de la herramienta como ToolMessage
     messages.push(
       new ToolMessage({

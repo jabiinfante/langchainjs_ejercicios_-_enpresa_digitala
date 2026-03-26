@@ -73,7 +73,7 @@ const llm = new ChatMistralAI({
 // Opción B: Usar initChatModel() para inicializar cualquier modelo de forma genérica
 // Esto permite cambiar fácilmente entre proveedores (OpenAI, Google, Anthropic, etc.)
 const llm2 = (await initChatModel('gemini-2.5-flash', {
-  modelProvider: 'google-genai'
+  modelProvider: 'google'
 })).withStructuredOutput(CommentSchema);
 
 // =============================================================================

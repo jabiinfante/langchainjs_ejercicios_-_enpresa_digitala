@@ -8,7 +8,8 @@
     "02:poet": "tsx --env-file=.env --watch src/02_cyber_poet.ts",
     "03:homework": "tsx --env-file=.env src/03_homework_maker.ts",
     "04:agent": "tsx --env-file=.env --watch src/04_webserver_for_agent.ts",
-    "05:indexer": "tsx --env-file=.env src/05_mdn-vector-indexer.ts"
+    "05:indexer": "tsx --env-file=.env src/05_mdn-vector-indexer.ts",
+    "06:indexer": "tsx --env-file=.env src/06_nollan-indexer.ts"
   },
   "keywords": [],
   "author": "",
@@ -16,12 +17,14 @@
   "type": "module",
   "dependencies": {
     "@fastify/cors": "^11.2.0",
+    "@langchain/cohere": "^1.0.4",
     "@langchain/community": "^1.1.4",
     "@langchain/core": "^1.1.15",
-    "@langchain/google-genai": "^2.1.10",
+    "@langchain/google": "^0.1.7",
     "@langchain/langgraph-checkpoint-sqlite": "^1.0.0",
     "@langchain/mistralai": "^1.0.2",
     "@langchain/qdrant": "^1.0.1",
+    "@langchain/textsplitters": "^1.0.1",
     "@qdrant/js-client-rest": "^1.16.2",
     "cheerio": "^1.1.2",
     "fastify": "^5.7.1",

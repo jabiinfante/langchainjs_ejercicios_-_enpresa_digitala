@@ -24,11 +24,14 @@
  * en tiempo de ejecución, evitando estado global y haciendo las tools más testables.
  * =============================================================================
  */
+import { CohereRerank } from "@langchain/cohere";
 
 import { WikipediaQueryRun } from "@langchain/community/tools/wikipedia_query_run";
+import { DocumentInterface } from "@langchain/core/documents";
 import { VectorStore } from "@langchain/core/vectorstores";
-import { tool } from "langchain";
-import z from "zod";
+import { ChatMistralAI } from "@langchain/mistralai";
+import { HumanMessage, SystemMessage, tool } from "langchain";
+import { z } from "zod";
 
 // =============================================================================
 // CONTEXT SCHEMA: Define la estructura del contexto del agente
@@ -41,7 +44,9 @@ import z from "zod";
 //   agent.invoke({ messages }, { context: { vectorStore: myVectorStore } });
 
 export const agentContextSchema = z.object({
-  vectorStore: z.custom<VectorStore>().describe("Vector store para búsquedas RAG"),
+  vectorStore: z
+    .custom<VectorStore>()
+    .describe("Vector store para búsquedas RAG"),
 });
 
 // Tipo TypeScript inferido del esquema
@@ -77,7 +82,7 @@ export const wordCountTool = tool(
 // Útil para obtener información general y actualizada sobre cualquier tema.
 
 export const wikipediaTool = new WikipediaQueryRun({
-  topKResults: 3,           // Número máximo de resultados a devolver
+  topKResults: 3, // Número máximo de resultados a devolver
   maxDocContentLength: 4000, // Longitud máxima del contenido por documento
 });
 
@@ -104,7 +109,9 @@ export const getExchangeRatesTool = tool(
         .describe("Código ISO de la moneda base (ej: EUR, USD, GBP, JPY)"),
       symbols: z
         .array(z.string())
-        .describe("Array de códigos ISO de las monedas destino (ej: ['USD', 'GBP'])"),
+        .describe(
+          "Array de códigos ISO de las monedas destino (ej: ['USD', 'GBP'])",
+        ),
     }),
   },
 );
@@ -117,9 +124,11 @@ export const getExchangeRatesTool = tool(
 
 export const getHistoricalRatesTool = tool(
   async ({ date, base, symbols }) => {
-    const url = `https://api.frankfurter.app/${date}?from=${base}&to=${symbols.join(",")}`;
+    const url = `https://api.frankfurter.dev/v1/${date}?from=${base}&to=${symbols.join(",")}`;
+    console.log(`Consultando tasas de cambio históricas con URL: ${url}`);
     const response = await fetch(url);
     const data = await response.json();
+    console.log(data);
     return JSON.stringify(data);
   },
   {
@@ -127,12 +136,8 @@ export const getHistoricalRatesTool = tool(
     description:
       "Obtiene tasas de cambio de una fecha PASADA específica. Usar cuando el usuario pregunte por el valor de una divisa en una fecha concreta, o quiera comparar la evolución de una moneda entre dos fechas.",
     schema: z.object({
-      date: z
-        .string()
-        .describe("Fecha en formato YYYY-MM-DD (ej: 2024-01-15)"),
-      base: z
-        .string()
-        .describe("Código ISO de la moneda base (ej: EUR, USD)"),
+      date: z.string().describe("Fecha en formato YYYY-MM-DD (ej: 2024-01-15)"),
+      base: z.string().describe("Código ISO de la moneda base (ej: EUR, USD)"),
       symbols: z
         .array(z.string())
         .describe("Array de códigos ISO de las monedas destino"),
@@ -153,9 +158,31 @@ export const getHistoricalRatesTool = tool(
 // El vectorStore se pasa al invocar el agente:
 //   agent.invoke({ messages }, { context: { vectorStore: myVectorStore } });
 
+const mistralMini = new ChatMistralAI({
+  model: "mistral-tiny",
+}).withStructuredOutput(
+  z.object({
+    querys: z
+      .array(z.string())
+      .describe("Consulta del usuario para buscar en la base de conocimiento"),
+  }),
+);
+
 export const storageKnowledgeTool = tool(
   async ({ query }, config) => {
+    
     process.stdout.write(`Buscando en base de conocimiento: "${query}"\n`);
+
+    const querys = await mistralMini.invoke([
+      new SystemMessage(
+        `A partir del mensaje del usuario, necesito una colección de palabras (una o dos) relevantes semanticamente relacionadas, para encontrar lo que necesita el usuario, buscando en una bbdd vectorial con guiones de películas.`,
+      ),
+      new HumanMessage(query),
+    ]);
+
+    process.stdout.write(
+      `  → Busquedas generadas por Mistral: ${JSON.stringify(querys)}\n`,
+    );
 
     // Acceder al vectorStore desde el contexto del agente
     // config.context contiene los valores pasados en { context: {...} } al invocar
@@ -164,24 +191,50 @@ export const storageKnowledgeTool = tool(
     if (!vectorStore) {
       return "Error: No se ha configurado el vector store en el contexto del agente.";
     }
+    const docs: Array<DocumentInterface> = [];
 
-    // Búsqueda por similitud semántica en el vector store
-    const retrievedDocs = await vectorStore.similaritySearch(query, 2);
-    console.log(`  → ${retrievedDocs.length} documentos encontrados`);
+    for (const q of querys.querys) {
+      process.stdout.write(`  → Buscando en vector store con query: "${q}"\n`);
+      const retrievedDocs = await vectorStore.similaritySearch(q, 3);
+      process.stdout.write(
+        `    → ${retrievedDocs.length} documentos encontrados\n`,
+      );
+
+      if (retrievedDocs.length > 0) {
+        docs.push(...retrievedDocs);
+      }
+    }
+
+    if (docs.length === 0) {
+      return `No se encontró información relevante sobre "${query}".`;
+    }
+
+    const reranker = new CohereRerank({
+      apiKey: process.env.COHERE_API_KEY,
+      model: "rerank-v3.5",
+      topN: 5,
+    });
+
+    const rerankedDocs = await reranker.compressDocuments(docs, query);
+    console.log(`  → Documentos reordenados por relevancia con Cohere Rerank`);
 
     // Formatear los documentos recuperados como contexto
-    const context = retrievedDocs.map((doc) => doc.pageContent).join("\n\n---\n\n");
+    const context = rerankedDocs
+      .map((doc) => doc.pageContent)
+      .join("\n\n---\n\n");
 
     return `Información encontrada sobre "${query}":\n\n${context}`;
   },
   {
     name: "storage_knowledge",
     description:
-      "Consulta la base de conocimiento sobre sistemas de almacenamiento web (localStorage, sessionStorage, IndexedDB, cookies, Cache API). USAR SIEMPRE que el usuario pregunte sobre cómo almacenar datos en el navegador, diferencias entre métodos de storage, límites de almacenamiento, o buenas prácticas de persistencia en aplicaciones web.",
+      "Consulta la base de conocimiento sobre peliculas de Christopher Nolan. USAR OBLIGATORIAMENTE cuando el usuario pregunte sobre: Interstellar, Inception. Devuelve información relevante extraída de documentos relacionados con esas películas.",
     schema: z.object({
       query: z
         .string()
-        .describe("Pregunta o tema a buscar sobre almacenamiento web"),
+        .describe(
+          "Pregunta o tema a buscar sobre peliculas de Christopher Nolan",
+        ),
     }),
   },
 );

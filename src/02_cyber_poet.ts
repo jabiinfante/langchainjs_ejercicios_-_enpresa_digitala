@@ -107,7 +107,7 @@ const messages: Array<SystemMessage | AIMessage | HumanMessage | ToolMessage> =
     ),
     new HumanMessage(
       `Necesito que generes un unico poema. Que uses las herramientas disponibles para contar las palabras de **ese** poema.
-      Reutiliza siempre el primer poema que generes para hacer el conteo de palabras.`,
+      `,
     ),
   ];
 
@@ -133,6 +133,7 @@ if (firstResponse.tool_calls && firstResponse.tool_calls.length > 0) {
     // Ejecutar la herramienta correspondiente
     let toolResult: string;
     if (call.name === "contar_palabras") {
+      console.log("LLM solicitó contar palabras del poema...");
       toolResult = await wordCountTool.invoke(call.args as { texto: string });
     } else {
       throw new Error(`Herramienta desconocida: ${call.name}`);
@@ -140,6 +141,7 @@ if (firstResponse.tool_calls && firstResponse.tool_calls.length > 0) {
 
     // Añadir el resultado como ToolMessage al historial
     // IMPORTANTE: tool_call_id debe coincidir con el id del tool_call
+    console.log(`Devolviendo resultado de herramienta: ${toolResult}`);
     messages.push(
       new ToolMessage({
         content:
@@ -170,6 +172,7 @@ if (firstResponse.tool_calls && firstResponse.tool_calls.length > 0) {
   const modelWithOutput = llm.withStructuredOutput(OutputSchema);
   console.log("Generando salida final con conteo de palabras...");
   const final = await modelWithOutput.invoke(messages);
+  console.dir(messages, { depth: null, colors: true });
 
   console.dir(final, { depth: null, colors: true });
 } else {
